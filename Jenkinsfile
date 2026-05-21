@@ -67,7 +67,7 @@ stages {
             )]) {
                 bat '''
                 echo %PASSWORD% | docker login -u %USERNAME% --password-stdin
-                docker push %PICKUP_IMAGE%
+                docker push %IMAGE%
                 '''
             }
         }
