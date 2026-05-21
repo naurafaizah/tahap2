@@ -65,6 +65,7 @@ pipeline {
                     usernameVariable: 'USERNAME',
                     passwordVariable: 'PASSWORD'
                 )]) {
+                    bat 'docker logout'
                     bat 'echo %PASSWORD% | docker login -u %USERNAME% --password-stdin'
                     bat 'docker push naurafaizah/pickup-service:%BUILD_NUMBER%'
                 }
