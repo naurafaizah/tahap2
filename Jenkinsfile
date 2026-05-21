@@ -3,7 +3,7 @@ agent any
 
 ```
 environment {
-    PICKUP_IMAGE = "naurafaizah/pickup-service:${env.BUILD_NUMBER}"
+    PICKUP_IMAGE = "naurafaizah/PickupService:${env.BUILD_NUMBER}"
 }
 
 stages {
