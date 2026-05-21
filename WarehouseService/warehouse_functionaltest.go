@@ -1,4 +1,4 @@
-package tests
+package main
 
 import (
 	"bytes"
@@ -9,7 +9,11 @@ import (
 func TestWarehouseAPI(t *testing.T) {
 	json := []byte(`{"stock":10}`)
 
-	resp, err := http.Post("http://localhost:8083/warehouse", "application/json", bytes.NewBuffer(json))
+	resp, err := http.Post(
+		"http://localhost:8084/warehouse",
+		"application/json",
+		bytes.NewBuffer(json),
+	)
 
 	if err != nil {
 		t.Errorf("Error: %v", err)
