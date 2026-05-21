@@ -65,11 +65,8 @@ pipeline {
                     usernameVariable: 'USERNAME',
                     passwordVariable: 'PASSWORD'
                 )]) {
-
-                    bat '''
-                    echo %PASSWORD% | docker login -u %USERNAME% --password-stdin
-                    docker push %PICKUP_IMAGE%
-                    '''
+                    bat 'echo %PASSWORD% | docker login -u %USERNAME% --password-stdin'
+                    bat 'docker push naurafaizah/pickup-service:%BUILD_NUMBER%'
                 }
             }
         }
