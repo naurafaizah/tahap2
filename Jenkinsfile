@@ -35,9 +35,7 @@ stages {
 
     stage('Build Image') {
         steps {
-            bat '''
-            docker build -t %PICKUP_IMAGE% ./PickupService
-            '''
+            bat 'docker build -t %PICKUP_IMAGE% ./PickupService'
         }
     }
 
@@ -47,15 +45,13 @@ stages {
                 bat '''
                 docker rm -f test-pickup
 
-                docker run -d --name test-pickup ^
-                  -p 8089:8089 ^
-                  %PICKUP_IMAGE%
+                docker run -d --name test-pickup -p 8089:8089 %PICKUP_IMAGE%
 
                 timeout /t 3
 
                 curl -X POST http://localhost:8089/pickup ^
-                  -H "Content-Type: application/json" ^
-                  -d "{\\"order_id\\":\\"ORD1\\",\\"payment_status\\":\\"paid\\",\\"weight\\":2}"
+                -H "Content-Type: application/json" ^
+                -d "{\\"order_id\\":\\"ORD1\\",\\"payment_status\\":\\"paid\\",\\"weight\\":2}"
 
                 docker rm -f test-pickup
                 '''
