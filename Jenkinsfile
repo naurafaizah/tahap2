@@ -61,13 +61,19 @@ pipeline {
         stage('Push Image') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-login',
-                    usernameVariable: 'USERNAME',
-                    passwordVariable: 'PASSWORD'
+                credentialsId: 'dockerhub-login',
+                usernameVariable: 'USERNAME',
+                passwordVariable: 'PASSWORD'
                 )]) {
-                    bat 'docker logout'
-                    bat 'echo %PASSWORD% | docker login -u %USERNAME% --password-stdin'
-                    bat 'docker push naurafaizah/pickup-service:%BUILD_NUMBER%'
+                bat 'docker logout'
+
+                ```
+                bat '''
+                docker login -u %USERNAME% -p %PASSWORD%
+                docker push naurafaizah/pickup-service:${BUILD_NUMBER}
+                '''
+                ```
+
                 }
             }
         }
