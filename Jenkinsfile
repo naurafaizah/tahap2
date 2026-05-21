@@ -1,7 +1,6 @@
 pipeline {
 agent any
 
-```
 environment {
     PICKUP_IMAGE = "naurafaizah/pickup-service:${env.BUILD_NUMBER}"
 }
@@ -86,6 +85,4 @@ stages {
         }
     }
 }
-```
-
 }
