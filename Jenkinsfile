@@ -3,6 +3,7 @@ pipeline {
 
     environment {
         PICKUP_IMAGE = "naurafaizah/pickup-service:${BUILD_NUMBER}"
+        WAREHOUSE_IMAGE = "naurafaizah/warehouse-service:${BUILD_NUMBER}"
     }
 
     stages {
@@ -14,7 +15,11 @@ pipeline {
             }
         }
 
-        stage('Unit Test') {
+        // =========================
+        // PICKUP SERVICE
+        // =========================
+
+        stage('Pickup Unit Test') {
             steps {
                 dir('PickupService') {
                     catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
@@ -24,7 +29,7 @@ pipeline {
             }
         }
 
-        stage('Lint / Vet') {
+        stage('Pickup Lint / Vet') {
             steps {
                 dir('PickupService') {
                     bat 'go vet ./...'
@@ -32,13 +37,13 @@ pipeline {
             }
         }
 
-        stage('Build Image') {
+        stage('Build Pickup Image') {
             steps {
                 bat 'docker build -t %PICKUP_IMAGE% ./PickupService'
             }
         }
 
-        stage('Functional Test') {
+        stage('Pickup Functional Test') {
             steps {
                 catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
                     bat '''
@@ -58,7 +63,57 @@ pipeline {
             }
         }
 
-        stage('Push Image') {
+        // =========================
+        // WAREHOUSE SERVICE
+        // =========================
+
+        stage('Warehouse Unit Test') {
+            steps {
+                dir('WarehouseService') {
+                    catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                        bat 'go test -v ./...'
+                    }
+                }
+            }
+        }
+
+        stage('Warehouse Lint / Vet') {
+            steps {
+                dir('WarehouseService') {
+                    bat 'go vet ./...'
+                }
+            }
+        }
+
+        stage('Build Warehouse Image') {
+            steps {
+                bat 'docker build -t %WAREHOUSE_IMAGE% ./WarehouseService'
+            }
+        }
+
+        stage('Warehouse Functional Test') {
+            steps {
+                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                    bat '''
+                    docker rm -f test-warehouse
+
+                    docker run -d --name test-warehouse -p 8090:8090 %WAREHOUSE_IMAGE%
+
+                    timeout /t 3
+
+                    curl http://localhost:8090/health
+
+                    docker rm -f test-warehouse
+                    '''
+                }
+            }
+        }
+
+        // =========================
+        // PUSH IMAGES
+        // =========================
+
+        stage('Push Images') {
             steps {
                 withCredentials([usernamePassword(
                 credentialsId: 'dockerhub-login',
@@ -70,7 +125,9 @@ pipeline {
 
                 bat """
                 docker login -u %USERNAME% -p %PASSWORD%
-                docker push naurafaizah/pickup-service:%BUILD_NUMBER%
+
+                docker push %PICKUP_IMAGE%
+                docker push %WAREHOUSE_IMAGE%
                 """
 
                 }
