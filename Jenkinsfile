@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        IMAGE = "nadzallad/pickup-service:${env.BUILD_NUMBER}"
+        IMAGE = "naurafaizah/pickup-service:${env.BUILD_NUMBER}"
     }
 
     stages {
@@ -11,7 +11,7 @@ pipeline {
         stage('Checkout Repo') {
             steps {
                 deleteDir()
-                git branch: 'main', url: 'https://github.com/nadzallad/Cloud2.git'
+                git branch: 'main', url: 'https://github.com/naurafaizah/tahap2.git'
             }
         }
 
@@ -47,7 +47,7 @@ pipeline {
                 docker run -d -p 8083:8083 --name test-pickup %IMAGE%
                 timeout /t 5
 
-                curl -X POST http://localhost:8083/pickup ^
+                curl -X POST http://localhost:8089/pickup ^
                 -H "Content-Type: application/json" ^
                 -d "{\\"order_id\\":1,\\"courier_name\\":\\"Budi\\",\\"status\\":\\"waiting pickup\\"}"
 
