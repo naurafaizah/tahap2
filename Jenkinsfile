@@ -3,7 +3,7 @@ agent any
 
 ```
 environment {
-    PICKUP_IMAGE = "naurafaizah/PickupService:${env.BUILD_NUMBER}"
+    PICKUP_IMAGE = "naurafaizah/pickup-service:${env.BUILD_NUMBER}"
 }
 
 stages {
@@ -51,7 +51,7 @@ stages {
                   -p 8089:8089 ^
                   %PICKUP_IMAGE%
 
-                timeout /t 5
+                timeout /t 3
 
                 curl -X POST http://localhost:8089/pickup ^
                   -H "Content-Type: application/json" ^
