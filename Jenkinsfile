@@ -65,12 +65,13 @@ pipeline {
                 usernameVariable: 'USERNAME',
                 passwordVariable: 'PASSWORD'
                 )]) {
+
                 bat 'docker logout'
 
-                bat '''
+                bat """
                 docker login -u %USERNAME% -p %PASSWORD%
-                docker push naurafaizah/pickup-service:${BUILD_NUMBER}
-                '''
+                docker push naurafaizah/pickup-service:%BUILD_NUMBER%
+                """
 
                 }
             }
