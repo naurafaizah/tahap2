@@ -1,4 +1,4 @@
-package tests
+package main
 
 import (
 	"bytes"
@@ -16,7 +16,7 @@ func TestPickupEndpoint(t *testing.T) {
 
 	body, _ := json.Marshal(reqBody)
 
-	resp, err := http.Post("http://localhost:8082/pickup", "application/json", bytes.NewBuffer(body))
+	resp, err := http.Post("http://localhost:8089/pickup", "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		t.Fatalf("Request failed: %v", err)
 	}
