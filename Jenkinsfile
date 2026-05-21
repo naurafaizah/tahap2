@@ -2,12 +2,20 @@ pipeline {
     agent any
 
     environment {
-        PICKUP_IMAGE = "naurafaizah/pickup-service:${BUILD_NUMBER}"
-        WAREHOUSE_IMAGE = "naurafaizah/warehouse-service:${BUILD_NUMBER}"
+        PAYMENT_IMAGE = "nadzalla/payment-service:${env.BUILD_NUMBER}"
+        ORDER_IMAGE = "nadzalla/order-service:${env.BUILD_NUMBER}"
+        DELIVERY_IMAGE = "nadzalla/delivery-service:${env.BUILD_NUMBER}"
+        SHIPMENT_IMAGE = "nadzalla/shipment-service:${env.BUILD_NUMBER}"
+
+        PICKUP_IMAGE = "naurafaizah/pickup-service:${env.BUILD_NUMBER}"
+        WAREHOUSE_IMAGE = "naurafaizah/warehouse-service:${env.BUILD_NUMBER}"
     }
 
     stages {
 
+        // =========================
+        // CHECKOUT
+        // =========================
         stage('Checkout Repo') {
             steps {
                 deleteDir()
@@ -16,133 +24,166 @@ pipeline {
         }
 
         // =========================
-        // PICKUP SERVICE
+        // UNIT TEST
         // =========================
-
-        stage('Pickup Unit Test') {
+        stage('Unit Test') {
             steps {
+
+                dir('PaymentService') {
+                    catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                        sh 'go test -v -run TestValidatePayment ./...'
+                    }
+                }
+
+                dir('OrderService') {
+                    catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                        sh 'go test -short ./...'
+                    }
+                }
+
+                dir('DeliveryService') {
+                    catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                        sh 'go test ./...'
+                    }
+                }
+
+                dir('ShipmentService') {
+                    catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                        sh 'go test ./...'
+                    }
+                }
+
                 dir('PickupService') {
                     catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                        bat 'go test -v ./...'
+                        sh 'go test -v ./...'
+                    }
+                }
+
+                dir('WarehouseService') {
+                    catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                        sh 'go test -v ./...'
                     }
                 }
             }
         }
 
-        stage('Pickup Lint / Vet') {
+        // =========================
+        // LINT / VET
+        // =========================
+        stage('Lint / Vet') {
             steps {
-                dir('PickupService') {
-                    bat 'go vet ./...'
-                }
+
+                dir('PaymentService') { sh 'go vet ./...' }
+                dir('OrderService') { sh 'go vet ./...' }
+                dir('DeliveryService') { sh 'go vet ./...' }
+                dir('ShipmentService') { sh 'go vet ./...' }
+                dir('PickupService') { sh 'go vet ./...' }
+                dir('WarehouseService') { sh 'go vet ./...' }
             }
         }
 
-        stage('Build Pickup Image') {
+        // =========================
+        // BUILD IMAGE
+        // =========================
+        stage('Build Images') {
             steps {
-                bat 'docker build -t %PICKUP_IMAGE% ./PickupService'
+                sh '''
+                docker build -t $PAYMENT_IMAGE ./PaymentService
+                docker build -t $ORDER_IMAGE ./OrderService
+                docker build -t $DELIVERY_IMAGE ./DeliveryService
+                docker build -t $SHIPMENT_IMAGE ./ShipmentService
+
+                docker build -t $PICKUP_IMAGE ./PickupService
+                docker build -t $WAREHOUSE_IMAGE ./WarehouseService
+                '''
             }
         }
 
-        stage('Pickup Functional Test') {
+        // =========================
+        // FUNCTIONAL TEST
+        // =========================
+        stage('Functional Test') {
             steps {
                 catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                    bat '''
-                    docker rm -f test-pickup
+                    sh '''
+                    docker rm -f test-payment test-order test-delivery test-shipment test-pickup test-warehouse || true
 
-                    docker run -d --name test-pickup -p 8089:8089 %PICKUP_IMAGE%
+                    docker run -d --name test-payment -p 8082:8082 $PAYMENT_IMAGE
+                    docker run -d --name test-order -p 8081:8081 $ORDER_IMAGE
+                    docker run -d --name test-delivery -p 8086:8086 $DELIVERY_IMAGE
+                    docker run -d --name test-shipment -p 8085:8085 $SHIPMENT_IMAGE
 
-                    timeout /t 3
+                    docker run -d --name test-pickup -p 8089:8089 $PICKUP_IMAGE
+                    docker run -d --name test-warehouse -p 8090:8090 $WAREHOUSE_IMAGE
 
-                    curl -X POST http://localhost:8089/pickup ^
-                    -H "Content-Type: application/json" ^
-                    -d "{\\"order_id\\":\\"ORD1\\",\\"payment_status\\":\\"paid\\",\\"weight\\":2}"
+                    sleep 10
 
-                    docker rm -f test-pickup
+                    # Payment
+                    curl -s -X POST http://localhost:8082/payment \
+                      -H "Content-Type: application/json" \
+                      -d '{"amount":1,"paid":1}'
+
+                    # Order
+                    curl -s -X POST http://localhost:8081/order \
+                      -H "Content-Type: application/json" \
+                      -d '{"user_id":1,"weight_kg":2,"distance_km":5,"base_price":10000}'
+
+                    # Delivery
+                    curl -s -X POST http://localhost:8086/delivery
+
+                    # Shipment
+                    curl -s -X POST http://localhost:8085/shipment
+
+                    # Pickup
+                    curl -s -X POST http://localhost:8089/pickup \
+                      -H "Content-Type: application/json" \
+                      -d '{"order_id":"ORD1","payment_status":"paid","weight":2}'
+
+                    # Warehouse
+                    curl -s http://localhost:8090/health
+
+                    docker rm -f test-payment test-order test-delivery test-shipment test-pickup test-warehouse || true
                     '''
                 }
             }
         }
 
         // =========================
-        // WAREHOUSE SERVICE
+        // PUSH IMAGE
         // =========================
-
-        stage('Warehouse Unit Test') {
-            steps {
-                dir('WarehouseService') {
-                    catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                        bat 'go test -v ./...'
-                    }
-                }
-            }
-        }
-
-        stage('Warehouse Lint / Vet') {
-            steps {
-                dir('WarehouseService') {
-                    bat 'go vet ./...'
-                }
-            }
-        }
-
-        stage('Build Warehouse Image') {
-            steps {
-                bat 'docker build -t %WAREHOUSE_IMAGE% ./WarehouseService'
-            }
-        }
-
-        stage('Warehouse Functional Test') {
-            steps {
-                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                    bat '''
-                    docker rm -f test-warehouse
-
-                    docker run -d --name test-warehouse -p 8090:8090 %WAREHOUSE_IMAGE%
-
-                    timeout /t 3
-
-                    curl http://localhost:8090/health
-
-                    docker rm -f test-warehouse
-                    '''
-                }
-            }
-        }
-
-        // =========================
-        // PUSH IMAGES
-        // =========================
-
         stage('Push Images') {
             steps {
                 withCredentials([usernamePassword(
-                credentialsId: 'dockerhub-login',
-                usernameVariable: 'USERNAME',
-                passwordVariable: 'PASSWORD'
+                    credentialsId: 'dockerhub-login',
+                    usernameVariable: 'USERNAME',
+                    passwordVariable: 'PASSWORD'
                 )]) {
+                    sh '''
+                    echo "$PASSWORD" | docker login -u "$USERNAME" --password-stdin
 
-                bat 'docker logout'
-
-                bat """
-                docker login -u %USERNAME% -p %PASSWORD%
-
-                docker push %PICKUP_IMAGE%
-                docker push %WAREHOUSE_IMAGE%
-                """
-
+                    docker push $PAYMENT_IMAGE
+                    docker push $ORDER_IMAGE
+                    docker push $DELIVERY_IMAGE
+                    docker push $SHIPMENT_IMAGE
+                    docker push $PICKUP_IMAGE
+                    docker push $WAREHOUSE_IMAGE
+                    '''
                 }
             }
         }
 
+        // =========================
+        // FINAL
+        // =========================
         stage('Deploy') {
             steps {
-                bat 'echo DEPLOY OK'
+                sh 'echo "DEPLOY OK"'
             }
         }
 
         stage('Verify') {
             steps {
-                bat 'echo PIPELINE SUCCESS'
+                sh 'echo "PIPELINE SUCCESS"'
             }
         }
     }
